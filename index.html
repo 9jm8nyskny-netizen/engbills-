@@ -1,1 +1,148 @@
-
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>أرشيف فواتير الدراسة</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f2d3a;--bg:#f2f5f6;--card:#fff;--line:#dde4e7;--mut:#617580;--acc:#0d7c8f;--hi:#e8a317;--bad:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.6 'IBM Plex Sans Arabic',Tahoma,sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
+nav{width:210px;background:var(--ink);color:#cfe0e6;padding:18px 10px;position:sticky;top:0;height:100vh;flex-shrink:0}
+nav h1{font-size:16px;margin:0 8px 16px;color:#fff}
+nav a{display:block;padding:9px 12px;border-radius:8px;color:inherit;text-decoration:none;margin-bottom:2px}
+nav a.on,nav a:hover{background:#1b4455;color:#fff}
+main{flex:1;padding:24px;max-width:1100px;min-width:0}
+h2{margin:0 0 16px;font-size:22px}h3{margin:20px 0 10px;font-size:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.k{color:var(--mut);font-size:13px}.v{font-size:22px;font-weight:700}
+button,.btn{font:inherit;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-block}
+button.g{background:#e6edf0;color:var(--ink)}button.r{background:var(--bad)}button.big{background:var(--hi);color:#2b2000;font-weight:700}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%}
+label{font-size:13px;color:var(--mut);display:block}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.bar{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.chip{background:#e6edf0;color:var(--ink);padding:5px 12px;border-radius:20px;cursor:pointer;font-size:13px}
+.chip.on{background:var(--acc);color:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);font-size:14px}th{background:#eaf0f2;color:var(--mut);font-weight:500}
+.wrap{overflow-x:auto}
+.row{display:flex;align-items:center;gap:10px;margin:6px 0}.row .n{width:130px;font-size:13px}.row .b{height:14px;background:var(--acc);border-radius:4px;min-width:2px}
+.row .s{font-size:12px;color:var(--mut);white-space:nowrap}
+.tag{background:#dff3e7;color:#1b7a43;padding:1px 8px;border-radius:10px;font-size:12px}
+#ov,#login{position:fixed;inset:0;background:rgba(10,30,40,.55);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px;z-index:9}
+#login{background:var(--ink);align-items:center}
+.box{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:720px}
+iframe,.box img{width:100%;height:480px;border:1px solid var(--line);border-radius:8px;object-fit:contain}
+dl{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;margin:0 0 14px}dt{color:var(--mut)}dd{margin:0}
+@media(max-width:760px){body{display:block}nav{width:auto;height:auto;position:static;display:flex;overflow-x:auto;padding:8px}nav h1{display:none}nav a{white-space:nowrap}main{padding:14px}}
+@media print{nav,.noprint{display:none}}
+</style>
+</head>
+<body>
+<div id="login"><div class="box" style="max-width:340px"><h2 id="lt">تسجيل الدخول</h2>
+<input id="le" type="email" placeholder="البريد الإلكتروني" style="margin-bottom:8px"><input id="lp" type="password" placeholder="كلمة المرور" onkeydown="if(event.key=='Enter')doLogin()">
+<p><button onclick="doLogin()" style="width:100%">دخول</button></p><p><button class="g" onclick="doLogin(1)" style="width:100%">إنشاء حساب (أول مرة فقط)</button></p></div></div>
+<nav><h1>🎓 فواتير الدراسة</h1>
+<a href="#/">🏠 الرئيسية</a><a href="#/archive">📁 أرشيف الفواتير</a><a href="#/add">➕ إضافة فاتورة</a>
+<a href="#/expenses">💰 المصروفات</a><a href="#/terms">🎓 الفصول الدراسية</a><a href="#/reports">📊 التقارير</a><a href="#/settings">⚙️ الإعدادات</a></nav>
+<main id="m"></main>
+<div id="ov" onclick="if(event.target==this)this.style.display='none'"><div class="box" id="ob"></div></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import {getFirestore,collection,getDocs,addDoc,doc,deleteDoc,updateDoc,writeBatch} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import {getStorage,ref,uploadBytes,getDownloadURL,deleteObject} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
+const app=initializeApp({apiKey:"AIzaSyBWjl-v8LGxVWlq80jDbhzCNlc8PQPbqXc",authDomain:"study-bills.firebaseapp.com",projectId:"study-bills",storageBucket:"study-bills.firebasestorage.app",messagingSenderId:"296571091502",appId:"1:296571091502:web:d3be3ca78eaeeaaf03fdbf"});
+const A=getAuth(app),DB=getFirestore(app),ST=getStorage(app);
+const err=e=>alert(({'auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة','auth/email-already-in-use':'الحساب موجود، سجّل الدخول','auth/weak-password':'كلمة المرور ضعيفة (6 أحرف على الأقل)','auth/invalid-email':'البريد غير صحيح','permission-denied':'لا توجد صلاحية، راجع قواعد الأمان في Firebase','storage/unauthorized':'لا توجد صلاحية للتخزين، راجع قواعد Storage'})[e.code]||e.message||e.code);
+const FT=['رسوم تقديم','رسوم تسجيل','رسوم دراسية','رسوم مادة','رسوم اختبار','رسوم كتب','رسوم شهادة','رسوم أخرى'];
+const PM=['بطاقة بنكية','تحويل بنكي','Apple Pay','نقدًا','أخرى'];
+const MO=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+let inv=[],terms=[],flt={};
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money=n=>Number(n||0).toLocaleString('en')+' SAR',sum=a=>a.reduce((s,x)=>s+(x.total||0),0);
+const yr=x=>x.pay_date.slice(0,4),mo=x=>+x.pay_date.slice(5,7),dt=d=>d.split('-').reverse().join('/');
+const tn=id=>(terms.find(t=>t.id==id)||{}).name||'—';
+const opts=(a,sel,all)=>(all?`<option value="">${all}</option>`:'')+a.map(x=>{const v=x.id??x,t=x.name??x;return `<option value="${esc(v)}" ${v==sel?'selected':''}>${esc(t)}</option>`}).join('');
+function showLogin(){$('#login').style.display='flex'}
+async function doLogin(n){try{await (n?createUserWithEmailAndPassword:signInWithEmailAndPassword)(A,$('#le').value.trim(),$('#lp').value)}catch(x){err(x)}}
+async function load(){const r=async c=>(await getDocs(collection(DB,c))).docs.map(d=>({id:d.id,...d.data()}));[inv,terms]=await Promise.all([r('invoices'),r('terms')]);inv.sort((a,b)=>b.pay_date.localeCompare(a.pay_date));terms.sort((a,b)=>(b.created||0)-(a.created||0))}
+function table(l){return l.length?`<div class="wrap"><table><tr><th>رقم الفاتورة</th><th>نوع الرسوم</th><th>الجهة</th><th>الفصل</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th></th></tr>${l.map(x=>`<tr><td>${esc(x.number||'—')}</td><td>${esc(x.fee_type)}</td><td>${esc(x.institution)}</td><td>${esc(tn(x.term_id))}</td><td>${dt(x.pay_date)}</td><td>${money(x.total)}</td><td><span class="tag">مدفوعة</span></td><td><button class="g" onclick="show('${x.id}')">عرض</button></td></tr>`).join('')}</table></div>`:'<p class="k">لا توجد فواتير. اضغط «+ إضافة فاتورة» للبدء.</p>'}
+function bars(rows){const mx=Math.max(1,...rows.map(r=>r[1]));return rows.map(r=>`<div class="row"><span class="n">${esc(r[0])}</span><div class="b" style="width:${r[1]/mx*55}%"></div><span class="s">${money(r[1])}</span></div>`).join('')||'<p class="k">لا توجد بيانات</p>'}
+function by(l,f){const o={};l.forEach(x=>{const k=f(x);o[k]=(o[k]||0)+x.total});return Object.entries(o)}
+const pages={
+dash(){const n=new Date(),y=n.getFullYear(),m=n.getMonth()+1;
+ return `<div style="display:flex;justify-content:space-between;align-items:center"><h2>الرئيسية</h2><a class="btn big" href="#/add">+ إضافة فاتورة</a></div>
+ <div class="grid">${[['إجمالي المدفوع',sum(inv)],['هذه السنة',sum(inv.filter(x=>yr(x)==y))],['هذا الشهر',sum(inv.filter(x=>yr(x)==y&&mo(x)==m))],['عدد الفواتير',inv.length]].map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[0]=='عدد الفواتير'?c[1]:money(c[1])}</div></div>`).join('')}</div>
+ <h3>آخر الفواتير المضافة</h3>${table(inv.slice().sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,5))}
+ <h3>المصروفات حسب السنة</h3><div class="card">${bars(by(inv,yr).sort())}</div>`},
+archive(){const ys=[...new Set(inv.map(yr))].sort().reverse();
+ setTimeout(res);
+ return `<h2>أرشيف الفواتير</h2><input placeholder="🔍 ابحث: رقم الفاتورة، الجامعة، نوع الرسوم، الفصل، التاريخ، المبلغ، طريقة الدفع..." value="${esc(flt.q||'')}" oninput="flt.q=this.value;res()">
+ <div class="bar"><span class="chip ${!flt.y?'on':''}" onclick="flt.y='';flt.m='';go()">كل السنوات</span>${ys.map(y=>`<span class="chip ${flt.y==y?'on':''}" onclick="flt.y='${y}';flt.m='';go()">${y}</span>`).join('')}</div>
+ <div class="bar"><span class="chip ${!flt.m?'on':''}" onclick="flt.m='';go()">كل الأشهر</span>${MO.map((n,i)=>{const c=inv.filter(x=>(!flt.y||yr(x)==flt.y)&&mo(x)==i+1).length;return `<span class="chip ${flt.m==i+1?'on':''}" onclick="flt.m=${i+1};go()">${n}${c?` (${c})`:''}</span>`}).join('')}</div>
+ <div class="f" style="margin-bottom:12px"><select onchange="flt.t=this.value;res()">${opts(FT,flt.t,'كل أنواع الرسوم')}</select><select onchange="flt.s=this.value;res()">${opts(terms,flt.s,'كل الفصول')}</select><select onchange="flt.p=this.value;res()">${opts(PM,flt.p,'كل طرق الدفع')}</select></div><div id="res"></div>`},
+form(id){const x=inv.find(i=>i.id==id)||{pay_date:new Date().toISOString().slice(0,10),discount:0,tax:0,amount:'',fee_type:FT[2],method:PM[0]};
+ const fl=(l,h)=>`<div><label>${l}</label>${h}</div>`,v=k=>esc(x[k]??'');
+ return `<h2>${id?'تعديل فاتورة':'إضافة فاتورة'}</h2><form id="fm" class="card" onsubmit="saveInv(event,'${id||''}')"><div class="f">
+ ${fl('رقم الفاتورة',`<input name="number" value="${v('number')}">`)}${fl('تاريخ الدفع *',`<input type="date" name="pay_date" required value="${v('pay_date')}">`)}
+ ${fl('الجهة التعليمية / الجامعة',`<input name="institution" value="${v('institution')}">`)}${fl('نوع الرسوم',`<select name="fee_type">${opts(FT,x.fee_type)}</select>`)}
+ ${fl('الفصل الدراسي',`<select name="term_id">${opts(terms,x.term_id,'— بدون —')}</select>`)}${fl('المادة / المقرر (اختياري)',`<input name="course" value="${v('course')}">`)}
+ ${fl('المبلغ قبل الخصم',`<input type="number" step="0.01" name="amount" value="${v('amount')}" oninput="calc()">`)}${fl('الخصم',`<input type="number" step="0.01" name="discount" value="${v('discount')}" oninput="calc()">`)}
+ ${fl('الضريبة',`<input type="number" step="0.01" name="tax" value="${v('tax')}" oninput="calc()">`)}${fl('المبلغ النهائي المدفوع',`<input type="number" step="0.01" name="total" value="${v('total')}">`)}
+ ${fl('طريقة الدفع',`<select name="method">${opts(PM,x.method)}</select>`)}${fl('ملف الفاتورة (PDF/JPG/PNG)'+(x.file_name?` — الحالي: ${esc(x.file_name)}، اختر ملفًا لاستبداله`:''),`<input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png">`)}</div>
+ <p>${fl('ملاحظات',`<textarea name="notes" rows="2">${v('notes')}</textarea>`)}</p><button>حفظ الفاتورة</button> <a class="btn g" href="#/archive">إلغاء</a></form>`},
+expenses(){const ys=[...new Set(inv.map(yr))].sort().reverse(),mx=inv.slice().sort((a,b)=>b.total-a.total)[0],
+ mm=by(inv,x=>yr(x)+' '+MO[mo(x)-1]).sort((a,b)=>b[1]-a[1])[0],su=f=>sum(inv.filter(f));
+ return `<h2>المصروفات الدراسية</h2><div class="grid">
+ <div class="card"><div class="k">أكثر شهر دفعت فيه</div><div class="v">${mm?mm[0]:'—'}</div><div class="k">${mm?money(mm[1]):''}</div></div>
+ <div class="card"><div class="k">أعلى فاتورة</div><div class="v">${mx?money(mx.total):'—'}</div></div>
+ <div class="card"><div class="k">المواد</div><div class="v">${money(su(x=>x.fee_type=='رسوم مادة'))}</div></div>
+ <div class="card"><div class="k">الاختبارات</div><div class="v">${money(su(x=>x.fee_type=='رسوم اختبار'))}</div></div></div>
+ <h3>حسب الفصل الدراسي</h3><div class="card">${bars(terms.map(t=>[t.name,sum(inv.filter(x=>x.term_id==t.id))]))}</div>
+ ${ys.map(y=>{const l=inv.filter(x=>yr(x)==y);return `<h3>${y}</h3><div class="grid"><div class="card"><div class="k">حسب النوع</div>${bars(by(l,x=>x.fee_type))}<hr><b>الإجمالي: ${money(sum(l))}</b></div><div class="card"><div class="k">حسب الأشهر</div>${bars(MO.map((n,i)=>[n,sum(l.filter(x=>mo(x)==i+1))]).filter(r=>r[1]))}</div></div>`}).join('')}`},
+terms(){const t=flt.term?terms.find(t=>t.id==flt.term):null,l=t?inv.filter(x=>x.term_id==t.id):[];
+ return `<h2>الفصول الدراسية</h2><div class="card" style="display:flex;gap:8px"><input id="tname" placeholder="مثال: Fall 2026"><button onclick="addTerm()">إضافة</button></div>
+ <div class="bar">${terms.map(x=>`<span class="chip ${t&&t.id==x.id?'on':''}" onclick="flt.term='${x.id}';go()">${esc(x.name)} — ${money(sum(inv.filter(i=>i.term_id==x.id)))}</span>`).join('')}</div>
+ ${t?`<h3>${esc(t.name)} — الإجمالي ${money(sum(l))} <button class="r" onclick="delTerm('${t.id}')">حذف الفصل</button></h3>${table(l)}`:''}`},
+reports(){setTimeout(rep);const ys=[...new Set(inv.map(yr))].sort().reverse();
+ return `<h2>التقارير</h2><div class="f card"><select id="ry" onchange="rep()">${opts(ys,flt.ry,'كل السنوات')}</select><select id="rm" onchange="rep()"><option value="">كل الأشهر</option>${MO.map((n,i)=>`<option value="${i+1}" ${flt.rm==i+1?'selected':''}>${n}</option>`).join('')}</select><select id="rs" onchange="rep()">${opts(terms,flt.rs,'كل الفصول')}</select><select id="rt" onchange="rep()">${opts(FT,flt.rt,'كل الأنواع')}</select></div><div id="rr"></div>`},
+settings(){return `<h2>الإعدادات</h2><div class="card" style="max-width:420px"><h3 style="margin-top:0">تغيير كلمة المرور</h3><p><input id="po" type="password" placeholder="الحالية"></p><p><input id="pn" type="password" placeholder="الجديدة (6 أحرف على الأقل)"></p><button onclick="chPw()">تغيير</button> <button class="g" onclick="logout()">تسجيل الخروج</button></div>`}};
+function matches(){const s=(flt.q||'').trim().toLowerCase();return inv.filter(x=>(!flt.y||yr(x)==flt.y)&&(!flt.m||mo(x)==flt.m)&&(!flt.t||x.fee_type==flt.t)&&(!flt.s||x.term_id==flt.s)&&(!flt.p||x.method==flt.p)&&(!s||[x.number,x.institution,x.fee_type,tn(x.term_id),x.course,x.method,x.pay_date,dt(x.pay_date),x.total,x.notes].join(' ').toLowerCase().includes(s)))}
+function res(){const l=matches();$('#res').innerHTML=`<p class="k">${l.length} فاتورة — الإجمالي ${money(sum(l))}</p>`+table(l)}
+function rep(){const g=i=>$(i)?$(i).value:'';flt.ry=g('#ry');flt.rm=g('#rm');flt.rs=g('#rs');flt.rt=g('#rt');
+ const l=inv.filter(x=>(!flt.ry||yr(x)==flt.ry)&&(!flt.rm||mo(x)==flt.rm)&&(!flt.rs||x.term_id==flt.rs)&&(!flt.rt||x.fee_type==flt.rt)),t=l.map(x=>x.total),c=l.length;window._rep=l;
+ $('#rr').innerHTML=`<div class="grid" style="margin:12px 0">${[['عدد الفواتير',c],['إجمالي المدفوع',money(sum(l))],['متوسط الفاتورة',money(c?sum(l)/c:0)],['أعلى فاتورة',money(c?Math.max(...t):0)],['أقل فاتورة',money(c?Math.min(...t):0)]].map(a=>`<div class="card"><div class="k">${a[0]}</div><div class="v">${a[1]}</div></div>`).join('')}</div><button onclick="csv()">⬇ تصدير Excel / CSV</button>`}
+function csv(){const h=['رقم الفاتورة','التاريخ','الجهة','نوع الرسوم','الفصل','المادة','قبل الخصم','الخصم','الضريبة','المدفوع','طريقة الدفع','ملاحظات'],c=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+ const t=[h,...window._rep.map(x=>[x.number,x.pay_date,x.institution,x.fee_type,tn(x.term_id),x.course,x.amount,x.discount,x.tax,x.total,x.method,x.notes])].map(r=>r.map(c).join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download='invoices.csv';a.click()}
+function calc(){const g=n=>+document.querySelector(`[name=${n}]`).value||0;document.querySelector('[name=total]').value=(g('amount')-g('discount')+g('tax')).toFixed(2)}
+async function saveInv(e,id){e.preventDefault();const bt=e.target.querySelector('button');bt.disabled=true;
+try{const fd=new FormData(e.target),d={};for(const k of ['number','pay_date','institution','fee_type','term_id','course','method','notes'])d[k]=fd.get(k)||'';
+for(const k of ['amount','discount','tax','total'])d[k]=+fd.get(k)||0;
+const f=fd.get('file'),old=inv.find(i=>i.id==id);
+if(f&&f.size){const ext=f.name.split('.').pop().toLowerCase();if(!['pdf','jpg','jpeg','png'].includes(ext))throw{message:'الملفات المسموحة: PDF, JPG, JPEG, PNG'};
+const pa=`invoices/${A.currentUser.uid}/${Date.now()}.${ext}`;await uploadBytes(ref(ST,pa),f);Object.assign(d,{file_name:f.name,file_path:pa,file_url:await getDownloadURL(ref(ST,pa))});
+if(old&&old.file_path)deleteObject(ref(ST,old.file_path)).catch(()=>{})}
+let nid=id;if(id)await updateDoc(doc(DB,'invoices',id),d);else nid=(await addDoc(collection(DB,'invoices'),{...d,created:Date.now()})).id;
+await load();location.hash='#/archive';show(nid)}catch(x){err(x)}bt.disabled=false}
+async function addTerm(){const n=$('#tname').value.trim();if(!n)return;try{await addDoc(collection(DB,'terms'),{name:n,created:Date.now()});await load();go()}catch(x){err(x)}}
+async function delTerm(i){if(!confirm('حذف الفصل؟ (الفواتير تبقى دون ربط)'))return;try{const b=writeBatch(DB);inv.filter(x=>x.term_id==i).forEach(x=>b.update(doc(DB,'invoices',x.id),{term_id:''}));b.delete(doc(DB,'terms',i));await b.commit();flt.term='';await load();go()}catch(x){err(x)}}
+async function chPw(){try{const u=A.currentUser;await reauthenticateWithCredential(u,EmailAuthProvider.credential(u.email,$('#po').value));await updatePassword(u,$('#pn').value);alert('تم التغيير')}catch(x){err(x)}}
+async function logout(){await signOut(A)}
+function show(id){const x=inv.find(i=>i.id==id);if(!x)return;const u=x.file_url||'',pdf=(x.file_path||x.file_name||'').toLowerCase().endsWith('pdf');
+ $('#ob').innerHTML=`<h2>تفاصيل الفاتورة</h2><dl>${[['رقم الفاتورة',x.number],['الجهة التعليمية',x.institution],['نوع الرسوم',x.fee_type],['المادة',x.course],['الفصل الدراسي',tn(x.term_id)],['تاريخ الدفع',dt(x.pay_date)],['المبلغ النهائي',money(x.total)],['طريقة الدفع',x.method],['الملاحظات',x.notes]].map(a=>`<dt>${a[0]}</dt><dd>${esc(a[1]||'—')}</dd>`).join('')}</dl>
+ ${x.file_name?(pdf?`<iframe src="${u}"></iframe>`:`<img src="${u}">`):'<p class="k">لا يوجد ملف مرفق (يمكنك رفعه من «تعديل»).</p>'}
+ <p class="noprint"><button onclick="location.hash='#/add/${id}';$('#ov').style.display='none'">تعديل</button> ${x.file_name?`<button class="g" onclick="window.open('${u}','_blank')">تحميل</button> <button class="g" onclick="window.open('${u}').print()">طباعة</button>`:''} <button class="r" onclick="del('${id}')">حذف</button> <button class="g" onclick="$('#ov').style.display='none'">إغلاق</button></p>`;$('#ov').style.display='flex'}
+async function del(id){if(!confirm('حذف الفاتورة والملف نهائيًا؟'))return;const x=inv.find(i=>i.id==id);try{if(x.file_path)await deleteObject(ref(ST,x.file_path)).catch(()=>{});await deleteDoc(doc(DB,'invoices',id));$('#ov').style.display='none';await load();route()}catch(e){err(e)}}
+function go(){route()}
+function route(){const h=location.hash.replace('#/','').split('/'),p=h[0]||'dash';$('#m').innerHTML=p=='add'?pages.form(h[1]):(pages[p]||pages.dash)();
+ document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')=='#/'+(p=='dash'?'':p)))}
+addEventListener('hashchange',route);
+Object.assign(window,{$,flt,show,del,go,res,rep,csv,calc,saveInv,addTerm,delTerm,chPw,logout,doLogin});
+onAuthStateChanged(A,async u=>{if(u){$('#login').style.display='none';try{await load()}catch(x){err(x)}route()}else showLogin()});
+</script>
+</body>
+</html>
