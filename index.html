@@ -55,8 +55,8 @@ import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuth
 import {getFirestore,collection,getDocs,addDoc,doc,deleteDoc,updateDoc,writeBatch} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {getStorage,ref,uploadBytes,getDownloadURL,deleteObject} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 const app=initializeApp({apiKey:"AIzaSyBWjl-v8LGxVWlq80jDbhzCNlc8PQPbqXc",authDomain:"study-bills.firebaseapp.com",projectId:"study-bills",storageBucket:"study-bills.firebasestorage.app",messagingSenderId:"296571091502",appId:"1:296571091502:web:d3be3ca78eaeeaaf03fdbf"});
-const A=getAuth(app),DB=getFirestore(app),ST=getStorage(app);
-const err=e=>alert(({'auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة','auth/email-already-in-use':'الحساب موجود، سجّل الدخول','auth/weak-password':'كلمة المرور ضعيفة (6 أحرف على الأقل)','auth/invalid-email':'البريد غير صحيح','permission-denied':'لا توجد صلاحية، راجع قواعد الأمان في Firebase','storage/unauthorized':'لا توجد صلاحية للتخزين، راجع قواعد Storage'})[e.code]||e.message||e.code);
+const A=getAuth(app),DB=getFirestore(app),ST=getStorage(app);ST.maxUploadRetryTime=15000;ST.maxOperationRetryTime=15000;
+const err=e=>alert(({'auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة','auth/email-already-in-use':'الحساب موجود، سجّل الدخول','auth/weak-password':'كلمة المرور ضعيفة (6 أحرف على الأقل)','auth/invalid-email':'البريد غير صحيح','permission-denied':'لا توجد صلاحية، راجع قواعد الأمان في Firebase','storage/retry-limit-exceeded':'فشل رفع الملف: غالبًا Storage غير مفعّل في Firebase أو الاتصال ضعيف','storage/bucket-not-found':'Storage غير مفعّل: فعّله من لوحة Firebase','storage/unauthorized':'لا توجد صلاحية للتخزين، راجع قواعد Storage'})[e.code]||e.message||e.code);
 const FT=['رسوم تقديم','رسوم تسجيل','رسوم دراسية','رسوم مادة','رسوم اختبار','رسوم كتب','رسوم شهادة','رسوم أخرى'];
 const PM=['بطاقة بنكية','تحويل بنكي','Apple Pay','نقدًا','أخرى'];
 const MO=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -119,7 +119,7 @@ function csv(){const h=['رقم الفاتورة','التاريخ','الجهة',
  const t=[h,...window._rep.map(x=>[x.number,x.pay_date,x.institution,x.fee_type,tn(x.term_id),x.course,x.amount,x.discount,x.tax,x.total,x.method,x.notes])].map(r=>r.map(c).join(',')).join('\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download='invoices.csv';a.click()}
 function calc(){const g=n=>+document.querySelector(`[name=${n}]`).value||0;document.querySelector('[name=total]').value=(g('amount')-g('discount')+g('tax')).toFixed(2)}
-async function saveInv(e,id){e.preventDefault();const bt=e.target.querySelector('button');bt.disabled=true;
+async function saveInv(e,id){e.preventDefault();const bt=e.target.querySelector('button');bt.disabled=true;const bl=bt.textContent;bt.textContent='جاري الحفظ...';
 try{const fd=new FormData(e.target),d={};for(const k of ['number','pay_date','institution','fee_type','term_id','course','method','notes'])d[k]=fd.get(k)||'';
 for(const k of ['amount','discount','tax','total'])d[k]=+fd.get(k)||0;
 const f=fd.get('file'),old=inv.find(i=>i.id==id);
@@ -127,7 +127,7 @@ if(f&&f.size){const ext=f.name.split('.').pop().toLowerCase();if(!['pdf','jpg','
 const pa=`invoices/${A.currentUser.uid}/${Date.now()}.${ext}`;await uploadBytes(ref(ST,pa),f);Object.assign(d,{file_name:f.name,file_path:pa,file_url:await getDownloadURL(ref(ST,pa))});
 if(old&&old.file_path)deleteObject(ref(ST,old.file_path)).catch(()=>{})}
 let nid=id;if(id)await updateDoc(doc(DB,'invoices',id),d);else nid=(await addDoc(collection(DB,'invoices'),{...d,created:Date.now()})).id;
-await load();location.hash='#/archive';show(nid)}catch(x){err(x)}bt.disabled=false}
+await load();location.hash='#/archive';show(nid)}catch(x){err(x)}bt.disabled=false;bt.textContent=bl}
 async function addTerm(){const n=$('#tname').value.trim();if(!n)return;try{await addDoc(collection(DB,'terms'),{name:n,created:Date.now()});await load();go()}catch(x){err(x)}}
 async function delTerm(i){if(!confirm('حذف الفصل؟ (الفواتير تبقى دون ربط)'))return;try{const b=writeBatch(DB);inv.filter(x=>x.term_id==i).forEach(x=>b.update(doc(DB,'invoices',x.id),{term_id:''}));b.delete(doc(DB,'terms',i));await b.commit();flt.term='';await load();go()}catch(x){err(x)}}
 async function chPw(){try{const u=A.currentUser;await reauthenticateWithCredential(u,EmailAuthProvider.credential(u.email,$('#po').value));await updatePassword(u,$('#pn').value);alert('تم التغيير')}catch(x){err(x)}}
