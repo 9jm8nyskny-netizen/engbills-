@@ -52,7 +52,7 @@ dl{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;margin:0 0 14px}dt{
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,onAuthStateChanged,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-import {getFirestore,collection,getDocs,addDoc,doc,deleteDoc,updateDoc,writeBatch} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import {getFirestore,collection,getDocs,getDoc,addDoc,doc,deleteDoc,updateDoc,writeBatch} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {getStorage,ref,uploadBytes,getDownloadURL,deleteObject} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 const app=initializeApp({apiKey:"AIzaSyBWjl-v8LGxVWlq80jDbhzCNlc8PQPbqXc",authDomain:"study-bills.firebaseapp.com",projectId:"study-bills",storageBucket:"study-bills.firebasestorage.app",messagingSenderId:"296571091502",appId:"1:296571091502:web:d3be3ca78eaeeaaf03fdbf"});
 const A=getAuth(app),DB=getFirestore(app),ST=getStorage(app);ST.maxUploadRetryTime=15000;ST.maxOperationRetryTime=15000;
@@ -119,24 +119,31 @@ function csv(){const h=['رقم الفاتورة','التاريخ','الجهة',
  const t=[h,...window._rep.map(x=>[x.number,x.pay_date,x.institution,x.fee_type,tn(x.term_id),x.course,x.amount,x.discount,x.tax,x.total,x.method,x.notes])].map(r=>r.map(c).join(',')).join('\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download='invoices.csv';a.click()}
 function calc(){const g=n=>+document.querySelector(`[name=${n}]`).value||0;document.querySelector('[name=total]').value=(g('amount')-g('discount')+g('tax')).toFixed(2)}
+const rd=f=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)});
+async function packFile(f,ext){
+ if(ext=='pdf'){if(f.size>650000)throw{message:'ملف PDF كبير (الحد 650KB). ارفع صورة بدلًا منه أو صغّر الملف'};return rd(f)}
+ const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(f)});
+ for(const [mx,q] of [[1600,.8],[1400,.7],[1200,.6],[1000,.5],[800,.45]]){const k=Math.min(1,mx/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=img.width*k;c.height=img.height*k;c.getContext('2d').drawImage(img,0,0,c.width,c.height);const u=c.toDataURL('image/jpeg',q);if(u.length<900000)return u}
+ throw{message:'الصورة كبيرة جدًا حتى بعد الضغط'}}
+const bu=u=>{if(!u.startsWith('data:'))return u;const [h,b]=u.split(','),a=atob(b),n=new Uint8Array(a.length);for(let i=0;i<a.length;i++)n[i]=a.charCodeAt(i);return URL.createObjectURL(new Blob([n],{type:h.slice(5,h.indexOf(';'))}))};
 async function saveInv(e,id){e.preventDefault();const bt=e.target.querySelector('button');bt.disabled=true;const bl=bt.textContent;bt.textContent='جاري الحفظ...';
 try{const fd=new FormData(e.target),d={};for(const k of ['number','pay_date','institution','fee_type','term_id','course','method','notes'])d[k]=fd.get(k)||'';
 for(const k of ['amount','discount','tax','total'])d[k]=+fd.get(k)||0;
 const f=fd.get('file'),old=inv.find(i=>i.id==id);
 if(f&&f.size){const ext=f.name.split('.').pop().toLowerCase();if(!['pdf','jpg','jpeg','png'].includes(ext))throw{message:'الملفات المسموحة: PDF, JPG, JPEG, PNG'};
-const pa=`invoices/${A.currentUser.uid}/${Date.now()}.${ext}`;await uploadBytes(ref(ST,pa),f);Object.assign(d,{file_name:f.name,file_path:pa,file_url:await getDownloadURL(ref(ST,pa))});
-if(old&&old.file_path)deleteObject(ref(ST,old.file_path)).catch(()=>{})}
+const fid=(await addDoc(collection(DB,'files'),{data:await packFile(f,ext)})).id;Object.assign(d,{file_name:f.name,file_path:'',file_url:'',file_id:fid});
+if(old&&old.file_id)deleteDoc(doc(DB,'files',old.file_id)).catch(()=>{})}
 let nid=id;if(id)await updateDoc(doc(DB,'invoices',id),d);else nid=(await addDoc(collection(DB,'invoices'),{...d,created:Date.now()})).id;
 await load();location.hash='#/archive';show(nid)}catch(x){err(x)}bt.disabled=false;bt.textContent=bl}
 async function addTerm(){const n=$('#tname').value.trim();if(!n)return;try{await addDoc(collection(DB,'terms'),{name:n,created:Date.now()});await load();go()}catch(x){err(x)}}
 async function delTerm(i){if(!confirm('حذف الفصل؟ (الفواتير تبقى دون ربط)'))return;try{const b=writeBatch(DB);inv.filter(x=>x.term_id==i).forEach(x=>b.update(doc(DB,'invoices',x.id),{term_id:''}));b.delete(doc(DB,'terms',i));await b.commit();flt.term='';await load();go()}catch(x){err(x)}}
 async function chPw(){try{const u=A.currentUser;await reauthenticateWithCredential(u,EmailAuthProvider.credential(u.email,$('#po').value));await updatePassword(u,$('#pn').value);alert('تم التغيير')}catch(x){err(x)}}
 async function logout(){await signOut(A)}
-function show(id){const x=inv.find(i=>i.id==id);if(!x)return;const u=x.file_url||'',pdf=(x.file_path||x.file_name||'').toLowerCase().endsWith('pdf');
+async function show(id){const x=inv.find(i=>i.id==id);if(!x)return;const u=x.file_id?bu((await getDoc(doc(DB,'files',x.file_id))).data().data):(x.file_url||''),pdf=(x.file_path||x.file_name||'').toLowerCase().endsWith('pdf');
  $('#ob').innerHTML=`<h2>تفاصيل الفاتورة</h2><dl>${[['رقم الفاتورة',x.number],['الجهة التعليمية',x.institution],['نوع الرسوم',x.fee_type],['المادة',x.course],['الفصل الدراسي',tn(x.term_id)],['تاريخ الدفع',dt(x.pay_date)],['المبلغ النهائي',money(x.total)],['طريقة الدفع',x.method],['الملاحظات',x.notes]].map(a=>`<dt>${a[0]}</dt><dd>${esc(a[1]||'—')}</dd>`).join('')}</dl>
  ${x.file_name?(pdf?`<iframe src="${u}"></iframe>`:`<img src="${u}">`):'<p class="k">لا يوجد ملف مرفق (يمكنك رفعه من «تعديل»).</p>'}
  <p class="noprint"><button onclick="location.hash='#/add/${id}';$('#ov').style.display='none'">تعديل</button> ${x.file_name?`<button class="g" onclick="window.open('${u}','_blank')">تحميل</button> <button class="g" onclick="window.open('${u}').print()">طباعة</button>`:''} <button class="r" onclick="del('${id}')">حذف</button> <button class="g" onclick="$('#ov').style.display='none'">إغلاق</button></p>`;$('#ov').style.display='flex'}
-async function del(id){if(!confirm('حذف الفاتورة والملف نهائيًا؟'))return;const x=inv.find(i=>i.id==id);try{if(x.file_path)await deleteObject(ref(ST,x.file_path)).catch(()=>{});await deleteDoc(doc(DB,'invoices',id));$('#ov').style.display='none';await load();route()}catch(e){err(e)}}
+async function del(id){if(!confirm('حذف الفاتورة والملف نهائيًا؟'))return;const x=inv.find(i=>i.id==id);try{if(x.file_path)await deleteObject(ref(ST,x.file_path)).catch(()=>{});if(x.file_id)await deleteDoc(doc(DB,'files',x.file_id));await deleteDoc(doc(DB,'invoices',id));$('#ov').style.display='none';await load();route()}catch(e){err(e)}}
 function go(){route()}
 function route(){const h=location.hash.replace('#/','').split('/'),p=h[0]||'dash';$('#m').innerHTML=p=='add'?pages.form(h[1]):(pages[p]||pages.dash)();
  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')=='#/'+(p=='dash'?'':p)))}
