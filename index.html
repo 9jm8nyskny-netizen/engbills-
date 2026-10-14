@@ -56,6 +56,14 @@ td:last-child button{width:100%}
 .box p button,.box p .btn{margin-bottom:6px}
 }
 @media print{nav,.noprint{display:none}}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.hd h2{margin:0}
+.inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.ic{background:#fff;border:1px solid var(--line);border-inline-start:4px solid var(--acc);border-radius:12px;padding:14px;cursor:pointer;transition:box-shadow .15s}
+.ic:hover{box-shadow:0 3px 12px rgba(15,45,58,.14)}.top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.amt{font-weight:700;font-size:18px;color:var(--acc);white-space:nowrap}.inst{margin:2px 0 8px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mut)}.nt{margin-top:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.more{margin-top:8px;font-size:13px;color:var(--acc)}
+@media(min-width:900px){.box{max-width:980px}.dg{display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start}}
 </style>
 </head>
 <body>
@@ -87,27 +95,24 @@ const opts=(a,sel,all)=>(all?`<option value="">${all}</option>`:'')+a.map(x=>{co
 function showLogin(){$('#login').style.display='flex'}
 async function doLogin(n){try{await (n?createUserWithEmailAndPassword:signInWithEmailAndPassword)(A,$('#le').value.trim(),$('#lp').value)}catch(x){err(x)}}
 async function load(){const r=async c=>(await getDocs(collection(DB,c))).docs.map(d=>({id:d.id,...d.data()}));[inv,terms]=await Promise.all([r('invoices'),r('terms')]);inv.sort((a,b)=>b.pay_date.localeCompare(a.pay_date));terms.sort((a,b)=>(b.created||0)-(a.created||0))}
-function table(l){return l.length?`<div class="wrap"><table><tr><th>رقم الفاتورة</th><th>نوع الرسوم</th><th>الجهة</th><th>الفصل</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th></th></tr>${l.map(x=>`<tr><td data-label="رقم الفاتورة">${esc(x.number||'—')}</td><td data-label="نوع الرسوم">${esc(x.fee_type)}</td><td data-label="الجهة">${esc(x.institution)}</td><td data-label="الفصل">${esc(tn(x.term_id))}</td><td data-label="التاريخ">${dt(x.pay_date)}</td><td data-label="المبلغ">${money(x.total)}</td><td data-label="الحالة"><span class="tag">مدفوعة</span></td><td><button class="g" onclick="show('${x.id}')">عرض</button></td></tr>`).join('')}</table></div>`:'<p class="k">لا توجد فواتير. اضغط «+ إضافة فاتورة» للبدء.</p>'}
+function table(l){return l.length?`<div class="inv">${l.map(x=>`<div class="ic" onclick="show('${x.id}')"><div class="top"><b>${esc(x.fee_type||'فاتورة')}</b><span class="amt">${money(x.total)}</span></div><div class="inst">${esc(x.institution||'—')}</div><div class="meta"><span>📅 ${dt(x.pay_date)}</span><span>🧾 ${esc(x.number||'—')}</span><span>💳 ${esc(x.method||'—')}</span>${x.file_name?'<span>📎 مرفق</span>':''}</div>${x.course?`<div class="k">${esc(x.course)}</div>`:''}${x.notes?`<div class="k nt">${esc(x.notes)}</div>`:''}<div class="more">عرض التفاصيل ‹</div></div>`).join('')}</div>`:'<p class="k">لا توجد فواتير. اضغط «+ إضافة فاتورة» للبدء.</p>'}
 function bars(rows){const mx=Math.max(1,...rows.map(r=>r[1]));return rows.map(r=>`<div class="row"><span class="n">${esc(r[0])}</span><div class="b" style="width:${r[1]/mx*55}%"></div><span class="s">${money(r[1])}</span></div>`).join('')||'<p class="k">لا توجد بيانات</p>'}
 function by(l,f){const o={};l.forEach(x=>{const k=f(x);o[k]=(o[k]||0)+x.total});return Object.entries(o)}
 const pages={
-dash(){const n=new Date(),y=n.getFullYear(),m=n.getMonth()+1;
- return `<div style="display:flex;justify-content:space-between;align-items:center"><h2>الرئيسية</h2><a class="btn big" href="#/add">+ إضافة فاتورة</a></div>
- <div class="grid">${[['إجمالي المدفوع',sum(inv)],['هذه السنة',sum(inv.filter(x=>yr(x)==y))],['هذا الشهر',sum(inv.filter(x=>yr(x)==y&&mo(x)==m))],['عدد الفواتير',inv.length]].map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[0]=='عدد الفواتير'?c[1]:money(c[1])}</div></div>`).join('')}</div>
- <h3>آخر الفواتير المضافة</h3>${table(inv.slice().sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,5))}
- <h3>المصروفات حسب السنة</h3><div class="card">${bars(by(inv,yr).sort())}</div>`},
+dash(){const n=new Date(),y=n.getFullYear(),m=n.getMonth()+1,c=[['إجمالي المدفوع',money(sum(inv))],['هذه السنة',money(sum(inv.filter(x=>yr(x)==y)))],['هذا الشهر',money(sum(inv.filter(x=>yr(x)==y&&mo(x)==m)))],['عدد الفواتير',inv.length]];
+ return `<div class="hd"><h2>فواتيري</h2><a class="btn big" href="#/add">+ إضافة فاتورة</a></div><div class="grid" style="margin-bottom:16px">${c.map(a=>`<div class="card"><div class="k">${a[0]}</div><div class="v">${a[1]}</div></div>`).join('')}</div>`+pages.archive().replace('<h2>أرشيف الفواتير</h2>','')},
 archive(){const ys=[...new Set(inv.map(yr))].sort().reverse();
  setTimeout(res);
  return `<h2>أرشيف الفواتير</h2><input placeholder="🔍 ابحث: رقم الفاتورة، الجامعة، نوع الرسوم، الفصل، التاريخ، المبلغ، طريقة الدفع..." value="${esc(flt.q||'')}" oninput="flt.q=this.value;res()">
  <div class="bar"><span class="chip ${!flt.y?'on':''}" onclick="flt.y='';flt.m='';go()">كل السنوات</span>${ys.map(y=>`<span class="chip ${flt.y==y?'on':''}" onclick="flt.y='${y}';flt.m='';go()">${y}</span>`).join('')}</div>
  <div class="bar"><span class="chip ${!flt.m?'on':''}" onclick="flt.m='';go()">كل الأشهر</span>${MO.map((n,i)=>{const c=inv.filter(x=>(!flt.y||yr(x)==flt.y)&&mo(x)==i+1).length;return `<span class="chip ${flt.m==i+1?'on':''}" onclick="flt.m=${i+1};go()">${n}${c?` (${c})`:''}</span>`}).join('')}</div>
- <div class="f" style="margin-bottom:12px"><select onchange="flt.t=this.value;res()">${opts(FT,flt.t,'كل أنواع الرسوم')}</select><select onchange="flt.s=this.value;res()">${opts(terms,flt.s,'كل الفصول')}</select><select onchange="flt.p=this.value;res()">${opts(PM,flt.p,'كل طرق الدفع')}</select></div><div id="res"></div>`},
+ <div class="f" style="margin-bottom:12px"><select onchange="flt.t=this.value;res()">${opts(FT,flt.t,'كل أنواع الرسوم')}</select><select onchange="flt.p=this.value;res()">${opts(PM,flt.p,'كل طرق الدفع')}</select></div><div id="res"></div>`},
 form(id){const x=inv.find(i=>i.id==id)||{pay_date:new Date().toISOString().slice(0,10),discount:0,tax:0,amount:'',fee_type:FT[2],method:PM[0]};
  const fl=(l,h)=>`<div><label>${l}</label>${h}</div>`,v=k=>esc(x[k]??'');
  return `<h2>${id?'تعديل فاتورة':'إضافة فاتورة'}</h2><form id="fm" class="card" onsubmit="saveInv(event,'${id||''}')"><div class="f">
  ${fl('رقم الفاتورة',`<input name="number" value="${v('number')}">`)}${fl('تاريخ الدفع *',`<input type="date" name="pay_date" required value="${v('pay_date')}">`)}
  ${fl('الجهة التعليمية / الجامعة',`<input name="institution" value="${v('institution')}">`)}${fl('نوع الرسوم',`<select name="fee_type">${opts(FT,x.fee_type)}</select>`)}
- ${fl('الفصل الدراسي',`<select name="term_id">${opts(terms,x.term_id,'— بدون —')}</select>`)}${fl('المادة / المقرر (اختياري)',`<input name="course" value="${v('course')}">`)}
+ ${fl('المادة / المقرر (اختياري)',`<input name="course" value="${v('course')}">`)}
  ${fl('المبلغ قبل الخصم',`<input type="number" step="0.01" name="amount" value="${v('amount')}" oninput="calc()">`)}${fl('الخصم',`<input type="number" step="0.01" name="discount" value="${v('discount')}" oninput="calc()">`)}
  ${fl('الضريبة',`<input type="number" step="0.01" name="tax" value="${v('tax')}" oninput="calc()">`)}${fl('المبلغ النهائي المدفوع',`<input type="number" step="0.01" name="total" value="${v('total')}">`)}
  ${fl('طريقة الدفع',`<select name="method">${opts(PM,x.method)}</select>`)}${fl('ملف الفاتورة (PDF/JPG/PNG)'+(x.file_name?` — الحالي: ${esc(x.file_name)}، اختر ملفًا لاستبداله`:''),`<input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png">`)}</div>
@@ -158,8 +163,8 @@ async function delTerm(i){if(!confirm('حذف الفصل؟ (الفواتير ت�
 async function chPw(){try{const u=A.currentUser;await reauthenticateWithCredential(u,EmailAuthProvider.credential(u.email,$('#po').value));await updatePassword(u,$('#pn').value);alert('تم التغيير')}catch(x){err(x)}}
 async function logout(){await signOut(A)}
 async function show(id){const x=inv.find(i=>i.id==id);if(!x)return;const u=x.file_id?bu((await getDoc(doc(DB,'files',x.file_id))).data().data):(x.file_url||''),pdf=(x.file_path||x.file_name||'').toLowerCase().endsWith('pdf');
- $('#ob').innerHTML=`<h2>تفاصيل الفاتورة</h2><dl>${[['رقم الفاتورة',x.number],['الجهة التعليمية',x.institution],['نوع الرسوم',x.fee_type],['المادة',x.course],['الفصل الدراسي',tn(x.term_id)],['تاريخ الدفع',dt(x.pay_date)],['المبلغ النهائي',money(x.total)],['طريقة الدفع',x.method],['الملاحظات',x.notes]].map(a=>`<dt>${a[0]}</dt><dd>${esc(a[1]||'—')}</dd>`).join('')}</dl>
- ${x.file_name?(pdf?`<iframe src="${u}"></iframe>`:`<img src="${u}">`):'<p class="k">لا يوجد ملف مرفق (يمكنك رفعه من «تعديل»).</p>'}
+ $('#ob').innerHTML=`<h2>تفاصيل الفاتورة</h2><div class="dg"><dl>${[['رقم الفاتورة',x.number],['الجهة التعليمية',x.institution],['نوع الرسوم',x.fee_type],['المادة',x.course],['تاريخ الدفع',dt(x.pay_date)],['المبلغ النهائي',money(x.total)],['طريقة الدفع',x.method],['الملاحظات',x.notes]].map(a=>`<dt>${a[0]}</dt><dd>${esc(a[1]||'—')}</dd>`).join('')}</dl><div>
+ ${x.file_name?(pdf?`<iframe src="${u}"></iframe>`:`<img src="${u}">`):'<p class="k">لا يوجد ملف مرفق (يمكنك رفعه من «تعديل»).</p>'}</div></div>
  <p class="noprint"><button onclick="location.hash='#/add/${id}';$('#ov').style.display='none'">تعديل</button> ${x.file_name?`<button class="g" onclick="window.open('${u}','_blank')">تحميل</button> <button class="g" onclick="window.open('${u}').print()">طباعة</button>`:''} <button class="r" onclick="del('${id}')">حذف</button> <button class="g" onclick="$('#ov').style.display='none'">إغلاق</button></p>`;$('#ov').style.display='flex'}
 async function del(id){if(!confirm('حذف الفاتورة والملف نهائيًا؟'))return;const x=inv.find(i=>i.id==id);try{if(x.file_path)await deleteObject(ref(ST,x.file_path)).catch(()=>{});if(x.file_id)await deleteDoc(doc(DB,'files',x.file_id));await deleteDoc(doc(DB,'invoices',id));$('#ov').style.display='none';await load();route()}catch(e){err(e)}}
 function go(){route()}
