@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0f2d3a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="فواتير الدراسة">
 <title>أرشيف فواتير الدراسة</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -36,7 +36,25 @@ th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);font
 .box{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:720px}
 iframe,.box img{width:100%;height:480px;border:1px solid var(--line);border-radius:8px;object-fit:contain}
 dl{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;margin:0 0 14px}dt{color:var(--mut)}dd{margin:0}
-@media(max-width:760px){body{display:block}nav{width:auto;height:auto;position:static;display:flex;overflow-x:auto;padding:8px}nav h1{display:none}nav a{white-space:nowrap}main{padding:14px}}
+body{min-height:100vh;min-height:100dvh}main{margin:0 auto}nav i{font-style:normal;margin-inline-end:8px}
+input[type=date]{min-height:40px}button,.btn{min-height:40px}.chip{padding:7px 14px}
+@media(max-width:1024px){nav{width:180px}main{padding:18px}}
+@media(max-width:760px){
+body{display:block;padding-bottom:calc(66px + env(safe-area-inset-bottom));padding-top:env(safe-area-inset-top)}
+nav{position:fixed;top:auto;bottom:0;left:0;right:0;width:auto;height:auto;display:flex;overflow-x:auto;padding:4px 4px calc(4px + env(safe-area-inset-bottom));z-index:8;border-top:1px solid #24566a}
+nav h1{display:none}nav a{flex:0 0 auto;min-width:72px;text-align:center;font-size:11px;padding:6px 6px;margin:0;line-height:1.3;white-space:nowrap}
+nav i{display:block;font-size:20px;margin:0}
+main{padding:14px}h2{font-size:19px}
+input,select,textarea{font-size:16px}
+.f{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.v{font-size:17px}.k{font-size:12px}
+.row .n{width:84px}.row .s{font-size:11px}
+.wrap{overflow:visible}table,tbody{display:block;border:0;background:none}tr:first-child{display:none}
+tr{display:block;background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:6px 12px}
+td{display:flex;justify-content:space-between;gap:10px;border:0;padding:4px 0}td[data-label]::before{content:attr(data-label);color:var(--mut)}
+td:last-child button{width:100%}
+#ov{padding:0}.box{border-radius:0;min-height:100%;padding:16px}iframe,.box img{height:60vh}
+.box p button,.box p .btn{margin-bottom:6px}
+}
 @media print{nav,.noprint{display:none}}
 </style>
 </head>
@@ -45,8 +63,8 @@ dl{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;margin:0 0 14px}dt{
 <input id="le" type="email" placeholder="البريد الإلكتروني" style="margin-bottom:8px"><input id="lp" type="password" placeholder="كلمة المرور" onkeydown="if(event.key=='Enter')doLogin()">
 <p><button onclick="doLogin()" style="width:100%">دخول</button></p><p><button class="g" onclick="doLogin(1)" style="width:100%">إنشاء حساب (أول مرة فقط)</button></p></div></div>
 <nav><h1>🎓 فواتير الدراسة</h1>
-<a href="#/">🏠 الرئيسية</a><a href="#/archive">📁 أرشيف الفواتير</a><a href="#/add">➕ إضافة فاتورة</a>
-<a href="#/expenses">💰 المصروفات</a><a href="#/terms">🎓 الفصول الدراسية</a><a href="#/reports">📊 التقارير</a><a href="#/settings">⚙️ الإعدادات</a></nav>
+<a href="#/"><i>🏠</i>الرئيسية</a><a href="#/archive"><i>📁</i>أرشيف الفواتير</a><a href="#/add"><i>➕</i>إضافة فاتورة</a>
+<a href="#/expenses"><i>💰</i>المصروفات</a><a href="#/terms"><i>🎓</i>الفصول الدراسية</a><a href="#/reports"><i>📊</i>التقارير</a><a href="#/settings"><i>⚙️</i>الإعدادات</a></nav>
 <main id="m"></main>
 <div id="ov" onclick="if(event.target==this)this.style.display='none'"><div class="box" id="ob"></div></div>
 <script type="module">
@@ -69,7 +87,7 @@ const opts=(a,sel,all)=>(all?`<option value="">${all}</option>`:'')+a.map(x=>{co
 function showLogin(){$('#login').style.display='flex'}
 async function doLogin(n){try{await (n?createUserWithEmailAndPassword:signInWithEmailAndPassword)(A,$('#le').value.trim(),$('#lp').value)}catch(x){err(x)}}
 async function load(){const r=async c=>(await getDocs(collection(DB,c))).docs.map(d=>({id:d.id,...d.data()}));[inv,terms]=await Promise.all([r('invoices'),r('terms')]);inv.sort((a,b)=>b.pay_date.localeCompare(a.pay_date));terms.sort((a,b)=>(b.created||0)-(a.created||0))}
-function table(l){return l.length?`<div class="wrap"><table><tr><th>رقم الفاتورة</th><th>نوع الرسوم</th><th>الجهة</th><th>الفصل</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th></th></tr>${l.map(x=>`<tr><td>${esc(x.number||'—')}</td><td>${esc(x.fee_type)}</td><td>${esc(x.institution)}</td><td>${esc(tn(x.term_id))}</td><td>${dt(x.pay_date)}</td><td>${money(x.total)}</td><td><span class="tag">مدفوعة</span></td><td><button class="g" onclick="show('${x.id}')">عرض</button></td></tr>`).join('')}</table></div>`:'<p class="k">لا توجد فواتير. اضغط «+ إضافة فاتورة» للبدء.</p>'}
+function table(l){return l.length?`<div class="wrap"><table><tr><th>رقم الفاتورة</th><th>نوع الرسوم</th><th>الجهة</th><th>الفصل</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th></th></tr>${l.map(x=>`<tr><td data-label="رقم الفاتورة">${esc(x.number||'—')}</td><td data-label="نوع الرسوم">${esc(x.fee_type)}</td><td data-label="الجهة">${esc(x.institution)}</td><td data-label="الفصل">${esc(tn(x.term_id))}</td><td data-label="التاريخ">${dt(x.pay_date)}</td><td data-label="المبلغ">${money(x.total)}</td><td data-label="الحالة"><span class="tag">مدفوعة</span></td><td><button class="g" onclick="show('${x.id}')">عرض</button></td></tr>`).join('')}</table></div>`:'<p class="k">لا توجد فواتير. اضغط «+ إضافة فاتورة» للبدء.</p>'}
 function bars(rows){const mx=Math.max(1,...rows.map(r=>r[1]));return rows.map(r=>`<div class="row"><span class="n">${esc(r[0])}</span><div class="b" style="width:${r[1]/mx*55}%"></div><span class="s">${money(r[1])}</span></div>`).join('')||'<p class="k">لا توجد بيانات</p>'}
 function by(l,f){const o={};l.forEach(x=>{const k=f(x);o[k]=(o[k]||0)+x.total});return Object.entries(o)}
 const pages={
