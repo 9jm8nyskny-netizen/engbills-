@@ -105,7 +105,7 @@ archive(){const ys=[...new Set(inv.map(yr))].sort().reverse();
  setTimeout(res);
  return `<h2>أرشيف الفواتير</h2><input placeholder="🔍 ابحث: رقم الفاتورة، الجامعة، نوع الرسوم، الفصل، التاريخ، المبلغ، طريقة الدفع..." value="${esc(flt.q||'')}" oninput="flt.q=this.value;res()">
  <div class="bar"><span class="chip ${!flt.y?'on':''}" onclick="flt.y='';flt.m='';go()">كل السنوات</span>${ys.map(y=>`<span class="chip ${flt.y==y?'on':''}" onclick="flt.y='${y}';flt.m='';go()">${y}</span>`).join('')}</div>
- <div class="bar"><span class="chip ${!flt.m?'on':''}" onclick="flt.m='';go()">كل الأشهر</span>${MO.map((n,i)=>{const c=inv.filter(x=>(!flt.y||yr(x)==flt.y)&&mo(x)==i+1).length;return `<span class="chip ${flt.m==i+1?'on':''}" onclick="flt.m=${i+1};go()">${n}${c?` (${c})`:''}</span>`}).join('')}</div>
+ ${flt.y?`<div class="bar"><span class="chip ${!flt.m?'on':''}" onclick="flt.m='';go()">كل أشهر ${flt.y}</span>${MO.map((n,i)=>{const c=inv.filter(x=>yr(x)==flt.y&&mo(x)==i+1).length;return c?`<span class="chip ${flt.m==i+1?'on':''}" onclick="flt.m=${i+1};go()">${n} (${c})</span>`:''}).join('')}</div>`:''}
  <div class="f" style="margin-bottom:12px"><select onchange="flt.t=this.value;res()">${opts(FT,flt.t,'كل أنواع الرسوم')}</select><select onchange="flt.p=this.value;res()">${opts(PM,flt.p,'كل طرق الدفع')}</select></div><div id="res"></div>`},
 form(id){const x=inv.find(i=>i.id==id)||{pay_date:new Date().toISOString().slice(0,10),discount:0,tax:0,amount:'',fee_type:FT[2],method:PM[0]};
  const fl=(l,h)=>`<div><label>${l}</label>${h}</div>`,v=k=>esc(x[k]??'');
