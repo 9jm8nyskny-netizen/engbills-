@@ -116,8 +116,8 @@ form(id){const x=inv.find(i=>i.id==id)||{pay_date:new Date().toISOString().slice
  ${fl('المادة / المقرر (اختياري)',`<input name="course" value="${v('course')}">`)}
  ${fl('المبلغ قبل الخصم',`<input type="number" step="0.01" name="amount" value="${v('amount')}" oninput="calc()">`)}${fl('الخصم',`<input type="number" step="0.01" name="discount" value="${v('discount')}" oninput="calc()">`)}
  ${fl('الضريبة',`<input type="number" step="0.01" name="tax" value="${v('tax')}" oninput="calc()">`)}${fl('المبلغ النهائي المدفوع',`<input type="number" step="0.01" name="total" value="${v('total')}">`)}
- ${fl('طريقة الدفع',`<select name="method">${opts(PM,x.method)}</select>`)}${fl('ملف الفاتورة (PDF/JPG/PNG)'+(x.file_name?` — الحالي: ${esc(x.file_name)}، اختر ملفًا لاستبداله`:''),`<input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png">`)}</div>
- <p>${fl('ملاحظات',`<textarea name="notes" rows="2">${v('notes')}</textarea>`)}</p><button>حفظ الفاتورة</button> <a class="btn g" href="#/archive">إلغاء</a></form>`},
+ ${fl('طريقة الدفع',`<select name="method">${opts(PM,x.method)}</select>`)}${fl('ملف الفاتورة (PDF/JPG/PNG)'+(x.file_name?` — الحالي: ${esc(x.file_name)}، اختر ملفًا لاستبداله`:''),`<input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" onchange="onPick(this.files[0])"><button type="button" class="g" style="margin-top:6px;width:100%" onclick="$('#cam').click()">📷 التقاط صورة بالكاميرا</button><input type="file" id="cam" accept="image/*" capture="environment" hidden onchange="useCam(this.files[0])">`)}</div>
+ <div id="ocr"></div><p>${fl('ملاحظات',`<textarea name="notes" rows="2">${v('notes')}</textarea>`)}</p><button>حفظ الفاتورة</button> <a class="btn g" href="#/archive">إلغاء</a></form>`},
 expenses(){const ys=[...new Set(inv.map(yr))].sort().reverse(),mx=inv.slice().sort((a,b)=>b.total-a.total)[0],
  mm=by(inv,x=>yr(x)+' '+MO[mo(x)-1]).sort((a,b)=>b[1]-a[1])[0],su=f=>sum(inv.filter(f));
  return `<h2>المصروفات الدراسية</h2><div class="grid">
@@ -143,6 +143,27 @@ function csv(){const h=['رقم الفاتورة','التاريخ','الجهة',
  const t=[h,...window._rep.map(x=>[x.number,x.pay_date,x.institution,x.fee_type,tn(x.term_id),x.course,x.amount,x.discount,x.tax,x.total,x.method,x.notes])].map(r=>r.map(c).join(',')).join('\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download='invoices.csv';a.click()}
 function calc(){const g=n=>+document.querySelector(`[name=${n}]`).value||0;document.querySelector('[name=total]').value=(g('amount')-g('discount')+g('tax')).toFixed(2)}
+const dg=t=>t.replace(/[٠-٩]/g,c=>c.charCodeAt(0)-1632).replace(/[۰-۹]/g,c=>c.charCodeAt(0)-1776);
+let _t;const loadT=()=>_t||(_t=new Promise((ok,no)=>{const e=document.createElement('script');e.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';e.onload=()=>ok(window.Tesseract);e.onerror=no;document.head.appendChild(e)}));
+async function toCanvas(f){const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(f)});const k=Math.min(1,2000/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);return c}
+function useCam(f){if(!f)return;const d=new DataTransfer();d.items.add(f);document.querySelector('[name=file]').files=d.files;onPick(f)}
+async function onPick(f){const o=$('#ocr');if(!f||!/^image\//.test(f.type)){o.innerHTML='';return}
+ o.innerHTML='<div class="card" style="margin:12px 0">⏳ جاري قراءة الفاتورة... (أول مرة قد تستغرق دقيقة لتحميل اللغة العربية)</div>';
+ try{const T=await loadT();const {data}=await T.recognize(await toCanvas(f),'ara+eng');showOcr(parse(data.text))}catch(e){o.innerHTML='<div class="card" style="margin:12px 0">تعذّرت القراءة التلقائية، أدخل البيانات يدويًا.</div>'}}
+function parse(t){t=dg(t);const L=t.split('\n').map(x=>x.trim()).filter(Boolean),r={},z=v=>String(v).padStart(2,'0');
+ for(const m of t.matchAll(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/g)){if(+m[1]>=2000&&+m[2]<=12){r.date=`${m[1]}-${z(m[2])}-${z(m[3])}`;break}}
+ if(!r.date)for(const m of t.matchAll(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/g)){if(+m[3]>=2000&&+m[2]<=12){r.date=`${m[3]}-${z(m[2])}-${z(m[1])}`;break}}
+ let m=t.match(/(?:invoice|receipt|inv|رقم\s*الفاتورة|فاتورة\s*رقم|رقم\s*الإيصال|رقم\s*السند|الفاتورة)\s*(?:no\.?|number|#|:)?\s*[:#\-]?\s*([A-Z0-9\-\/]*\d[A-Z0-9\-\/]*)/i);if(m)r.number=m[1];
+ const num=x=>(x.match(/\d[\d,]*\.?\d*/g)||[]).map(v=>parseFloat(v.replace(/,/g,''))).filter(v=>v>0&&v<1e6);
+ let c=[];L.forEach(l=>{if(/total|amount|paid|due|الإجمالي|الاجمالي|المجموع|المبلغ|المدفوع|الصافي/i.test(l))c.push(...num(l))});
+ if(!c.length)c=num(t).filter(v=>v!=Math.floor(v));if(c.length)r.amount=Math.max(...c);
+ const ln=L.find(l=>/جامعة|كلية|معهد|أكاديمية|اكاديمية|university|college|institute|academy|school/i.test(l));if(ln)r.institution=ln.slice(0,60);
+ const T=[[/تسجيل|registration/i,'رسوم تسجيل'],[/تقديم|application/i,'رسوم تقديم'],[/اختبار|امتحان|exam|test/i,'رسوم اختبار'],[/كتب|book/i,'رسوم كتب'],[/شهادة|certificate/i,'رسوم شهادة'],[/مادة|مقرر|course|module/i,'رسوم مادة'],[/دراسي|tuition|fee/i,'رسوم دراسية']];
+ const f=T.find(x=>x[0].test(t));if(f)r.fee_type=f[1];return r}
+function showOcr(r){const k=Object.keys(r).length;
+ $('#ocr').innerHTML=`<div class="card" style="margin:12px 0;border-color:var(--hi)"><b>📖 البيانات المقروءة من الصورة (راجعها وعدّلها)</b>${k?'':'<p class="k">لم أتمكن من استخراج بيانات واضحة، أدخلها يدويًا.</p>'}<div class="f" style="margin:10px 0">${[['number','رقم الفاتورة'],['date','التاريخ (سنة-شهر-يوم)'],['institution','الجهة'],['amount','المبلغ'],['fee_type','نوع الرسوم']].map(a=>`<div><label>${a[1]}</label><input id="o_${a[0]}" value="${esc(r[a[0]]??'')}"></div>`).join('')}</div><button type="button" onclick="applyOcr()">استخدم هذه البيانات</button> <button type="button" class="g" onclick="$('#ocr').innerHTML=''">تجاهل</button><p class="k" style="margin:8px 0 0">لن يُحفظ شيء إلا بعد أن تضغط «حفظ الفاتورة».</p></div>`}
+function applyOcr(){const g=k=>$('#o_'+k).value.trim(),st=(n,v)=>{if(v)document.querySelector(`[name=${n}]`).value=v};
+ st('number',g('number'));st('pay_date',/^\d{4}-\d\d-\d\d$/.test(g('date'))?g('date'):'');st('institution',g('institution'));st('amount',g('amount'));if(FT.includes(g('fee_type')))st('fee_type',g('fee_type'));calc();$('#ocr').innerHTML=''}
 const rd=f=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)});
 async function packFile(f,ext){
  if(ext=='pdf'){if(f.size>650000)throw{message:'ملف PDF كبير (الحد 650KB). ارفع صورة بدلًا منه أو صغّر الملف'};return rd(f)}
@@ -172,7 +193,7 @@ function go(){route()}
 function route(){const h=location.hash.replace('#/','').split('/'),p=h[0]||'dash';$('#m').innerHTML=p=='add'?pages.form(h[1]):(pages[p]||pages.dash)();
  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')=='#/'+(p=='dash'?'':p)))}
 addEventListener('hashchange',route);
-Object.assign(window,{$,flt,show,del,go,res,rep,csv,calc,saveInv,addTerm,delTerm,chPw,logout,doLogin});
+Object.assign(window,{$,flt,show,del,go,res,rep,csv,calc,saveInv,addTerm,delTerm,chPw,logout,doLogin,onPick,useCam,applyOcr});
 onAuthStateChanged(A,async u=>{if(u){$('#login').style.display='none';try{await load()}catch(x){err(x)}route()}else showLogin()});
 </script>
 </body>
